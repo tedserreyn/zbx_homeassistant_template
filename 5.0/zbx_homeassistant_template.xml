@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zabbix_export>
+    <version>5.0</version>
+    <date>2022-01-30T15:56:04Z</date>
+    <groups>
+        <group>
+            <name>Templates</name>
+        </group>
+    </groups>
+    <templates>
+        <template>
+            <template>Template Home Assistant API</template>
+            <name>Template Home Assistant API</name>
+            <groups>
+                <group>
+                    <name>Templates</name>
+                </group>
+            </groups>
+            <applications>
+                <application>
+                    <name>Home Assistant</name>
+                </application>
+            </applications>
+            <items>
+                <item>
+                    <name>API Status</name>
+                    <type>HTTP_AGENT</type>
+                    <key>ha_api_status</key>
+                    <delay>3m</delay>
+                    <trends>0</trends>
+                    <value_type>TEXT</value_type>
+                    <applications>
+                        <application>
+                            <name>Home Assistant</name>
+                        </application>
+                    </applications>
+                    <preprocessing>
+                        <step>
+                            <type>JSONPATH</type>
+                            <params>$.body.message</params>
+                        </step>
+                    </preprocessing>
+                    <url>{$HA_HTTP_PROTOCOL}://{HOST.CONN}:{$HA_HTTP_PORT}/api/</url>
+                    <headers>
+                        <header>
+                            <name>Authorization</name>
+                            <value>Bearer {$HA_TOKEN}</value>
+                        </header>
+                    </headers>
+                    <output_format>JSON</output_format>
+                    <verify_peer>YES</verify_peer>
+                    <triggers>
+                        <trigger>
+                            <expression>{regexp(^API running\.$)}=0</expression>
+                            <name>API is not running</name>
+                            <opdata>Current status: {ITEM.LASTVALUE1}</opdata>
+                            <priority>WARNING</priority>
+                        </trigger>
+                    </triggers>
+                </item>
+            </items>
+            <discovery_rules>
+                <discovery_rule>
+                    <name>Discover Entities</name>
+                    <type>HTTP_AGENT</type>
+                    <key>ha_entities</key>
+                    <delay>60m</delay>
+                    <lifetime>7d</lifetime>
+                    <item_prototypes>
+                        <item_prototype>
+                            <name>Entity {#HA_ENTITY_NAME} State</name>
+                            <type>HTTP_AGENT</type>
+                            <key>ha_entity_state[{#HA_ENTITY_ID}]</key>
+                            <delay>15m</delay>
+                            <trends>0</trends>
+                            <value_type>TEXT</value_type>
+                            <applications>
+                                <application>
+                                    <name>Home Assistant</name>
+                                </application>
+                            </applications>
+                            <preprocessing>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <params>$.body.state</params>
+                                </step>
+                            </preprocessing>
+                            <url>{$HA_HTTP_PROTOCOL}://{HOST.CONN}/api/states/{#HA_ENTITY_ID}</url>
+                            <headers>
+                                <header>
+                                    <name>Authorization</name>
+                                    <value>Bearer {$HA_TOKEN}</value>
+                                </header>
+                            </headers>
+                            <output_format>JSON</output_format>
+                            <verify_peer>YES</verify_peer>
+                            <trigger_prototypes>
+                                <trigger_prototype>
+                                    <expression>{regexp(^unavailable$)}=1</expression>
+                                    <name>Entity {#HA_ENTITY_NAME} is unavailable</name>
+                                    <priority>WARNING</priority>
+                                    <dependencies>
+                                        <dependency>
+                                            <name>API is not running</name>
+                                            <expression>{Template Home Assistant API:ha_api_status.regexp(^API running\.$)}=0</expression>
+                                        </dependency>
+                                    </dependencies>
+                                </trigger_prototype>
+                            </trigger_prototypes>
+                        </item_prototype>
+                    </item_prototypes>
+                    <url>{$HA_HTTP_PROTOCOL}://{HOST.CONN}/api/states</url>
+                    <headers>
+                        <header>
+                            <name>Authorization</name>
+                            <value>Bearer {$HA_TOKEN}</value>
+                        </header>
+                    </headers>
+                    <verify_peer>YES</verify_peer>
+                    <lld_macro_paths>
+                        <lld_macro_path>
+                            <lld_macro>{#HA_ENTITY_ID}</lld_macro>
+                            <path>$.entity_id</path>
+                        </lld_macro_path>
+                        <lld_macro_path>
+                            <lld_macro>{#HA_ENTITY_NAME}</lld_macro>
+                            <path>$.attributes.friendly_name</path>
+                        </lld_macro_path>
+                    </lld_macro_paths>
+                </discovery_rule>
+            </discovery_rules>
+            <macros>
+                <macro>
+                    <macro>{$HA_HTTP_PORT}</macro>
+                    <value>443</value>
+                    <description>http(s) port</description>
+                </macro>
+                <macro>
+                    <macro>{$HA_HTTP_PROTOCOL}</macro>
+                    <value>https</value>
+                    <description>http or https</description>
+                </macro>
+                <macro>
+                    <macro>{$HA_TOKEN}</macro>
+                    <description>Home Assistant Long-Lived Access Token</description>
+                </macro>
+            </macros>
+        </template>
+    </templates>
+</zabbix_export>
